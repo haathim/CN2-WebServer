@@ -9,9 +9,14 @@
 #define PORT 18000
 #define BACKLOG_QUEUE_LEN 10
 #define NO_FLAGS 0
+#define READ_BUFFER_SIZE 10000
 // #define sizeofsockaddr()
 
 int main(int argc, char **argv){
+
+    // allocate a buffer to read requests from client
+    char readBuffer[READ_BUFFER_SIZE];
+    memset(readBuffer, 0, READ_BUFFER_SIZE);
     
     // check for arguments are valid
 
@@ -39,9 +44,13 @@ int main(int argc, char **argv){
 
         printf("Accepted a connection..\n");
 
+        read(newSocket, readBuffer, READ_BUFFER_SIZE);
+
+        printf("Client request:\n%s\n", readBuffer);
+
         // send(newSocket, response, strlen(response), NO_FLAGS);
         write(newSocket, response, strlen(response));
-        
+
         printf("Sent\n");
 
         close(newSocket);
