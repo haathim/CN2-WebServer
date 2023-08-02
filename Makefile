@@ -2,11 +2,11 @@
 SOURCE=server.c
 BIN=server
 
-all: server
+all: ${BIN}
 
 
-@{BIN}: ${SOURCE}
-	gcc -0 $@ $^
+${BIN}: ${SOURCE}
+	gcc -o $@ $^ -g
 
 clean: 
 	rm -rf ${BIN}
