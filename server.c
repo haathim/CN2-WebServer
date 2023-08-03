@@ -12,6 +12,7 @@
 #define BACKLOG_QUEUE_LEN 10
 #define NO_FLAGS 0
 #define READ_BUFFER_SIZE 10000
+#define SEND_BUFFER_SIZE 1000
 #define RESOURCE_URL_SIZE 50
 #define MAX_RESPONSE_SIZE 1000
 #define handleError(errMsg) {\
@@ -19,15 +20,18 @@
         exit(1);\
     }
 
+char readBuffer[READ_BUFFER_SIZE];
+char sendBuffer[SEND_BUFFER_SIZE];
+
 void send404Error(int clientSocket){
 
-    const char *not_found_response = 
+    const char *notFoundResponse = 
         "HTTP/1.1 404 Not Found\r\n"
         "Content-Type: text/plain\r\n"
         "Content-Length: 15\r\n\r\n"
         "404 Not Found\n";
     
-    if (send(clientSocket, not_found_response, strlen(not_found_response), 0) < 0) {
+    if (send(clientSocket, notFoundResponse, strlen(notFoundResponse), 0) < 0) {
             close(clientSocket);
             handleError("Error sending file (Inside sendFileRespons)");
     }
@@ -43,11 +47,11 @@ void sendFileResponse(int client_socket, const char *filename) {
         handleError("Error opening file");
     }
 
-    char response[MAX_RESPONSE_SIZE];
+    // char response[MAX_RESPONSE_SIZE];
     int bytes_read;
-
-    while ((bytes_read = fread(response, 1, sizeof(response), file)) > 0) {
-        if (send(client_socket, response, bytes_read, 0) != bytes_read) {
+    
+    while ((bytes_read = fread(sendBuffer, 1, sizeof(sendBuffer), file)) > 0) {
+        if (send(client_socket, sendBuffer, bytes_read, 0) != bytes_read) {
             fclose(file);
             close(client_socket);
             handleError("Error sending file (Inside sendFileRespons)");
@@ -138,7 +142,6 @@ int main(int argc, char** argv){
     while (1){
 
 
-
         // int newSocket = accept(listeningSocket, (struct sockaddr*) &address, (socklen_t*) sizeof(address));
         int newSocket = accept(listeningSocket, NULL, NULL);
         if (newSocket < 0){
@@ -161,7 +164,9 @@ int main(int argc, char** argv){
         // }
         
 
-        // // send(newSocket, response, strlen(response), NO_FLAGS);
+        // send(newSocket, "response", 9, NO_FLAGS); //tried passing string literal
+        // send(newSocket, response, 9, NO_FLAGS); 
+
         // if(write(newSocket, response, strlen(response)) < 0){
         //     handleError("Error when writing to socket");
         // }
