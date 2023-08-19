@@ -6,14 +6,15 @@
 #include <unistd.h> //for close
 #include <errno.h> //for errors
 #include <signal.h>
+#include <pthread.h>
 
-
-#define PORT 18000
+// #define PORT 18000
 #define BACKLOG_QUEUE_LEN 10
 #define NO_FLAGS 0
 #define READ_BUFFER_SIZE 10000
 #define RESOURCE_URL_SIZE 50
 #define MAX_RESPONSE_SIZE 1000
+#define NUM_OF_THREADS 5
 #define handleError(errMsg) {\
         fprintf(stderr, "%s\nError cause:  %d: %s\n", errMsg, errno, strerror(errno));\
         exit(1);\
@@ -40,7 +41,8 @@ void sendFileResponse(int client_socket, const char *filename) {
 
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
-        handleError("Error opening file");
+        send404Error(client_socket);
+        return;
     }
 
     char response[MAX_RESPONSE_SIZE];
@@ -60,54 +62,46 @@ void sendFileResponse(int client_socket, const char *filename) {
 
 }
 
-void handleRequest(int clientSocket, char* readBuffer){
+void* handleRequest(void* clientSocketPtr){
 
-    // extract part after the root ("/") symbol
-    // check if it is a txt file
-        // if txt then give to a handleTxtFile fn
-    // if ico then handle using handleIcoFile (only if its favicon)
-    // else return 404 error code
-
-    char delimeter = '\r';
-    char *pos = strchr(readBuffer, delimeter);
-
-    char resourceRequested[RESOURCE_URL_SIZE];
-
-    strncpy(resourceRequested, readBuffer, pos - readBuffer);
-    resourceRequested[pos - readBuffer] = '\0';
-
-
-    if(strcmp(resourceRequested, "GET / HTTP/1.1") == 0){
-        sendFileResponse(clientSocket, "hello.txt");
-    }
-    else if(strcmp(resourceRequested, "GET /favicon.ico HTTP/1.1") == 0){
-        sendFileResponse(clientSocket, "ucsc-logo.png");
-
-    }
-    else if(strcmp(resourceRequested, "GET /a.txt HTTP/1.1") == 0){
-        printf("3\n");
-        sendFileResponse(clientSocket, "a.txt");
-    }
-    else if(strcmp(resourceRequested, "GET /b.txt HTTP/1.1") == 0){
-        printf("4\n");
-        sendFileResponse(clientSocket, "b.txt");
-    }
-    else{
-        send404Error(clientSocket);
-    }
-
-    return;
-
-}
-
-int main(int argc, char** argv){
+    int clientSocket = *((int*)clientSocketPtr);
 
     // allocate a buffer to read requests from client
     char readBuffer[READ_BUFFER_SIZE];
     memset(readBuffer, 0, READ_BUFFER_SIZE);
+
+    if(recv(clientSocket, readBuffer, READ_BUFFER_SIZE, 0) < 0){
+        handleError("Error when reading request");
+    }
+
+    const char delim[] = " ";
+
+    char *token = strtok(readBuffer, delim);
+    // check if first three characters are GET if not return
+    if(strcmp(token, "GET") != 0){
+        send404Error(clientSocket);
+    }
+
+    // get requested file name
+    token = strtok(NULL, delim);
+
+    sendFileResponse(clientSocket, token+1);
+
+    close(clientSocket);
+
+    return NULL;
+}
+
+int main(int argc, char** argv){
     
     // check for arguments are valid
     // for now no command-line-arguments
+    if (argc != 2){
+        handleError("Please specify port to run as an argument");
+    }
+    
+
+    int PORT = atoi(argv[1]);
 
     char *response = "HTTP/1.1 200 OK\r\nContent-Length: 16\r\nContent-Type: text/plain\r\n\r\nHello, client!";
 
@@ -117,8 +111,6 @@ int main(int argc, char** argv){
     {
         handleError("Error when initializing socket");
     }
-
-    // signal(SIGINT, intHandler, listeningSocket)
     
     // bind socket to IP
     struct sockaddr_in address;
@@ -137,38 +129,17 @@ int main(int argc, char** argv){
 
     while (1){
 
-
-
         // int newSocket = accept(listeningSocket, (struct sockaddr*) &address, (socklen_t*) sizeof(address));
         int newSocket = accept(listeningSocket, NULL, NULL);
         if (newSocket < 0){
             handleError("Error when accepting connection request");
         }
 
-        // printf("Accepted a connection..\n");
-
-        if(recv(newSocket, readBuffer, READ_BUFFER_SIZE, 0) < 0){
-            handleError("Error when reading request");
+        pthread_t requestHandlerThread;
+        if (pthread_create(&requestHandlerThread, NULL, handleRequest, &newSocket) != 0) {
+            handleError("Error when creating thread");
         }
 
-        // printf("Client request:\n%s\n", readBuffer);
-
-        handleRequest(newSocket, readBuffer);
-
-        // if (strncmp(readBuffer, "GET /favicon.ico", 16) == 0)
-        // {
-        //     // should send a image here for icon of the tab
-        // }
-        
-
-        // // send(newSocket, response, strlen(response), NO_FLAGS);
-        // if(write(newSocket, response, strlen(response)) < 0){
-        //     handleError("Error when writing to socket");
-        // }
-
-        // printf("Sent\n");
-
-        close(newSocket);
     }
     
     return 0;
