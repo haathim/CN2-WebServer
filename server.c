@@ -7,6 +7,9 @@
 #include <errno.h> //for errors
 #include <signal.h>
 #include <pthread.h>
+#include <sys/sendfile.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 // #define PORT 18000
 #define BACKLOG_QUEUE_LEN 10
@@ -39,21 +42,19 @@ void send404Error(int clientSocket){
 
 void sendFileResponse(int client_socket, const char *filename) {
 
-    FILE *file = fopen(filename, "r");
-    if (file == NULL) {
+    int file = open(filename, O_RDONLY);
+    if (file < 0) {
         send404Error(client_socket);
         return;
     }
 
-    char response[MAX_RESPONSE_SIZE];
-    int bytes_read;
+    struct stat file_stat;
+    fstat(file, &file_stat);
 
-    while ((bytes_read = fread(response, 1, sizeof(response), file)) > 0) {
-        if (send(client_socket, response, bytes_read, 0) != bytes_read) {
-            fclose(file);
-            close(client_socket);
-            handleError("Error sending file (Inside sendFileRespons)");
-        }
+    if(sendfile(client_socket, file, NULL, file_stat.st_size) < 0){
+        close(file);
+        close(client_socket);
+        handleError("Error in sendFile()");
     }
 
     close(client_socket);
