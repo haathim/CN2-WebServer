@@ -18,6 +18,7 @@
 #define RESOURCE_URL_SIZE 50
 #define MAX_RESPONSE_SIZE 1000
 #define NUM_OF_THREADS 5
+#define CONTENT_TYPE_SIZE 40
 #define handleError(errMsg) {\
         fprintf(stderr, "%s\nError cause:  %d: %s\n", errMsg, errno, strerror(errno));\
         exit(1);\
@@ -40,7 +41,29 @@ void send404Error(int clientSocket){
     
 }
 
-void sendFileResponse(int client_socket, const char *filename) {
+char* getContentType(char* fileName, char* contentType){
+    
+    const char* dot = strrchr(fileName, '.'); // Find the last dot in the filename
+    if (dot != NULL && dot[1] != '\0') {
+        const char* filecontentType = dot + 1; // Point to the characters after the dot
+
+        if (strcmp(filecontentType, "txt") == 0) {
+            strncpy(contentType, "text/plain", 64);
+        } else if (strcmp(filecontentType, "ico") == 0) {
+            strncpy(contentType, "image/x-icon", 64);
+        } else if (strcmp(filecontentType, "pdf") == 0) {
+            strncpy(contentType, "application/pdf", 64);
+        } else {
+            strncpy(contentType, "application/octet-stream", 64);
+        }
+    } else {
+        strncpy(contentType, "application/octet-stream", 64);
+    }
+
+    return contentType;
+}
+
+void sendFileResponse(int client_socket, char *filename) {
 
     int file = open(filename, O_RDONLY);
     if (file < 0) {
@@ -48,8 +71,23 @@ void sendFileResponse(int client_socket, const char *filename) {
         return;
     }
 
+    // find the contentType
+    char contentType[CONTENT_TYPE_SIZE];
+
+    getContentType(filename, contentType);
+        
     struct stat file_stat;
     fstat(file, &file_stat);
+
+    // Send HTTP headers
+    const char *response_headers = "HTTP/1.1 200 OK\r\n"
+                                    "Content-Type: %s\r\n"
+                                    "Content-Length: %ld\r\n"
+                                    "\r\n";
+    char headers_buffer[1024]; // Adjust buffer size as needed
+    sprintf(headers_buffer, response_headers, contentType, file_stat.st_size);
+
+    send(client_socket, headers_buffer, strlen(headers_buffer), 0);
 
     if(sendfile(client_socket, file, NULL, file_stat.st_size) < 0){
         close(file);
