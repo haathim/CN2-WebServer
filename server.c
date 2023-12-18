@@ -11,7 +11,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-// #define PORT 18000
 #define BACKLOG_QUEUE_LEN 10
 #define NO_FLAGS 0
 #define READ_BUFFER_SIZE 10000
@@ -123,6 +122,15 @@ void* handleRequest(void* clientSocketPtr){
 
     // get requested file name
     token = strtok(NULL, delim);
+
+    if (strlen(token) == 1)
+    {
+        sendFileResponse(clientSocket, "hello.txt");
+        close(clientSocket);
+
+        return NULL;
+    }
+    
 
     sendFileResponse(clientSocket, token+1);
 
