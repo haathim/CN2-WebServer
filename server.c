@@ -64,7 +64,13 @@ char* getContentType(char* fileName, char* contentType){
 
 void sendFileResponse(int client_socket, char *filename) {
 
-    int file = open(filename, O_RDONLY);
+    char filepath[100];
+
+    // Concatenate "content/" and the filename
+    strcpy(filepath, "content/");
+    strcat(filepath, filename);
+
+    int file = open(filepath, O_RDONLY);
     if (file < 0) {
         send404Error(client_socket);
         return;
