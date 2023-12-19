@@ -188,8 +188,11 @@ int main(int argc, char** argv){
             handleError("Error when accepting connection request");
         }
 
+        int* socketCopy = malloc(sizeof(int));  // Allocate memory for a copy of the socket descriptor
+        *socketCopy = newSocket;  // Copy the socket descriptor value
+
         pthread_t requestHandlerThread;
-        if (pthread_create(&requestHandlerThread, NULL, handleRequest, &newSocket) != 0) {
+        if (pthread_create(&requestHandlerThread, NULL, handleRequest, socketCopy) != 0) {
             handleError("Error when creating thread");
         }
 
