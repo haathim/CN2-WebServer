@@ -1,7 +1,9 @@
 
-SOURCE=server.c
+SOURCE=server.c utils.c error.c
 BIN=server
-FLAGS=-g -pthread
+FLAGS=-pthread
+BIN_DBG=server-dbg
+DBG_FLAGS=-g
 
 all: ${BIN}
 
@@ -9,5 +11,8 @@ all: ${BIN}
 ${BIN}: ${SOURCE}
 	gcc -o $@ $^ ${FLAGS}
 
+${BIN_DBG}: ${SOURCE}
+	gcc -o $@ $^ ${FLAGS} ${DBG_FLAGS}
+
 clean: 
-	rm -rf ${BIN}
+	rm -rf ${BIN} ${BIN_DBG}

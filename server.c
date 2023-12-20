@@ -10,57 +10,9 @@
 #include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
-#define BACKLOG_QUEUE_LEN 10
-#define NO_FLAGS 0
-#define READ_BUFFER_SIZE 10000
-#define RESOURCE_URL_SIZE 50
-#define MAX_RESPONSE_SIZE 1000
-#define NUM_OF_THREADS 5
-#define CONTENT_TYPE_SIZE 40
-#define handleError(errMsg) {\
-        fprintf(stderr, "%s\nError cause:  %d: %s\n", errMsg, errno, strerror(errno));\
-        exit(1);\
-    }
-
-void send404Error(int clientSocket){
-
-    const char *not_found_response = 
-        "HTTP/1.1 404 Not Found\r\n"
-        "Content-Type: text/plain\r\n"
-        "Content-Length: 15\r\n\r\n"
-        "404 Not Found\n";
-    
-    if (send(clientSocket, not_found_response, strlen(not_found_response), 0) < 0) {
-            close(clientSocket);
-            handleError("Error sending file (Inside sendFileRespons)");
-    }
-
-    close(clientSocket);
-    
-}
-
-char* getContentType(char* fileName, char* contentType){
-    
-    const char* dot = strrchr(fileName, '.'); // Find the last dot in the filename
-    if (dot != NULL && dot[1] != '\0') {
-        const char* filecontentType = dot + 1; // Point to the characters after the dot
-
-        if (strcmp(filecontentType, "txt") == 0) {
-            strncpy(contentType, "text/plain", 64);
-        } else if (strcmp(filecontentType, "ico") == 0) {
-            strncpy(contentType, "image/x-icon", 64);
-        } else if (strcmp(filecontentType, "pdf") == 0) {
-            strncpy(contentType, "application/pdf", 64);
-        } else {
-            strncpy(contentType, "application/octet-stream", 64);
-        }
-    } else {
-        strncpy(contentType, "application/octet-stream", 64);
-    }
-
-    return contentType;
-}
+#include "config.h"
+#include "utils.h"
+#include "error.h"
 
 void sendFileResponse(int client_socket, char *filename) {
 
@@ -140,7 +92,10 @@ void* handleRequest(void* clientSocketPtr){
 
     sendFileResponse(clientSocket, token+1);
 
+
+    sleep(20);
     close(clientSocket);
+    free(clientSocketPtr);
 
     return NULL;
 }
@@ -153,9 +108,13 @@ int main(int argc, char** argv){
         handleError("Please specify port to run as an argument");
     }
     
-
     int PORT = atoi(argv[1]);
 
+    if (PORT < 1024 && PORT > 49151)
+    {
+        handleError("Please specify a port number between 1024 and 49151");
+    }
+    
     char *response = "HTTP/1.1 200 OK\r\nContent-Length: 16\r\nContent-Type: text/plain\r\n\r\nHello, client!";
 
     // create listening socket
