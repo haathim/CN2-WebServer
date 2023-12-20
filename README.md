@@ -20,6 +20,13 @@ The server provides a default response, when no url parameters are passed. This 
 ## Debugging
 If you want to run the server in a debugging session,
 
+1. Clone repo
+```bash
+git clone https://github.com/haathim/CN2-WebServer.git
+cd CN2-WebServer
+#checkout to correct branch (if not already)
+git checkout multithread
+```
 
 1. Build the debug binary
 ```bash
